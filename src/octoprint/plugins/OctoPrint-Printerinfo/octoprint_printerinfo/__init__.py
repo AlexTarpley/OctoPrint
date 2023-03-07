@@ -1,6 +1,8 @@
 import octoprint.plugin
 from octoprint.server import admin_permission
 from octoprint.events import Events
+import requests 
+
 
 class PrinterinfoPlugin(
     octoprint.plugin.StartupPlugin,
@@ -9,16 +11,31 @@ class PrinterinfoPlugin(
 ):
 
     def on_after_startup(self):
+        url_printer = 'https://middleman.gavinhailey.dev/api/v1/printers'
         profile = self._printer_profile_manager.get_default()
         self._logger.info("Printer profile name: {}".format(profile["name"]))
-
+        myObj = {
+            "printer":{
+            "name" : profile["name"]
+            }
+        }
+        p = requests.post (url_printer, json =  myObj)
+        print(p)
+        
     def on_event(self, event, payload):
+        url_job = 'https://middleman.gavinhailey.dev/api/v1/jobs'
+
         if event == Events.FILE_ADDED:
             self._logger.info("New print job added!")
             job_id = payload.get("job", {}).get("id")
+            
             if job_id is not None:
                 job_data = self._printer.get_current_job()
                 if job_data is not None:
+                    myObj = {
+                        "job": job_data
+                    }
+                    j = requests.post(url_job, json = myObj)
                     self._logger.info("Job data: %s", job_data)
                     # Update your job object here
                 else:
@@ -51,7 +68,7 @@ class PrinterinfoPlugin(
     # Define the API endpoint for getting the printer profile information
     @octoprint.plugin.BlueprintPlugin.route("/api/printer/profile", methods=["GET"])
     @octoprint.plugin.BlueprintPlugin.requires_access(admin_permission)
-    #@octoprint.plugin.BlueprintPlugin.route("/api/job", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/api/job", methods=["GET"])
     #@octoprint.plugin.BlueprintPlugin.requires_access(status_permission)
     def get_printer_profile(self):
         profile = self._printer_profile_manager.get_default()
