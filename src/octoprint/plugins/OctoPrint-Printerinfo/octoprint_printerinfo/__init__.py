@@ -1,58 +1,65 @@
-# coding=utf-8
-from __future__ import absolute_import
-
-### (Don't forget to remove me)
-# This is a basic skeleton for your plugin's __init__.py. You probably want to adjust the class name of your plugin
-# as well as the plugin mixins it's subclassing from. This is really just a basic skeleton to get you started,
-# defining your plugin as a template plugin, settings and asset plugin. Feel free to add or remove mixins
-# as necessary.
-#
-# Take a look at the documentation on what other plugin mixins are available.
-
 import octoprint.plugin
-import requests
+from octoprint.server import admin_permission
+from octoprint.events import Events
 
-class PrinterinfoPlugin(octoprint.plugin.StartupPlugin):
+class PrinterinfoPlugin(
+    octoprint.plugin.StartupPlugin,
+    octoprint.plugin.BlueprintPlugin,
+    octoprint.plugin.EventHandlerPlugin
+):
 
     def on_after_startup(self):
-        profile = octoprint.printer.profile()
-        printer_name = profile.get("name")
-        self._logger.info(f"Printer name: {printer_name}")
-        return printer_name
+        profile = self._printer_profile_manager.get_default()
+        self._logger.info("Printer profile name: {}".format(profile["name"]))
+
+    def on_event(self, event, payload):
+        if event == Events.FILE_ADDED:
+            self._logger.info("New print job added!")
+            job_id = payload.get("job", {}).get("id")
+            if job_id is not None:
+                job_data = self._printer.get_current_job()
+                if job_data is not None:
+                    self._logger.info("Job data: %s", job_data)
+                    # Update your job object here
+                else:
+                   self._logger.warning("Failed to get job data for job id: %s", job_id)
     
+  # class JobInfoPlugin(octoprint.plugin.EventHandlerPlugin):
+  #     
+  #     def on_event(self, event, payload):
+  #         if event == Events.PRINT_JOB_ADDED:
+  #             self._logger.info("New print job added!")
+  #             job_id = payload.get("job", {}).get("id")
+  #             if job_id is not None:
+  #                 job_data = self._printer.get_job_data(job_id)
+  #                 if job_data is not None:
+  #                     self._logger.info("Job data: %s", job_data)
+  #                     # Update your job object here
+  #                 else:
+  #                     self._logger.warning("Failed to get job data for job id: %s", job_id)
+  #     
 
-    ##~~ Softwareupdate hook
-    def get_update_information(self):
-        # Define the configuration for your plugin to use with the Software Update
-        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
-        # for details.
+    # Define your plugin's asset files to automatically include in the
+    # core UI here.
+    def get_assets(self):
         return {
-            "printerinfo": {
-                "displayName": "Printerinfo Plugin",
-                "displayVersion": self._plugin_version,
-
-                # version check: github repository
-                "type": "github_release",
-                "user": "AlexTarpley",
-                "repo": "OctoPrint-Printerinfo",
-                "current": self._plugin_version,
-
-                # update method: pip
-                "pip": "https://github.com/AlexTarpley/OctoPrint-Printerinfo/archive/{target_version}.zip",
-            }
+            #"js": ["js/printerinfo.js"],
+            #"css": ["css/printerinfo.css"],
+            #"less": ["less/printerinfo.less"]
         }
 
+    # Define the API endpoint for getting the printer profile information
+    @octoprint.plugin.BlueprintPlugin.route("/api/printer/profile", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.requires_access(admin_permission)
+    #@octoprint.plugin.BlueprintPlugin.route("/api/job", methods=["GET"])
+    #@octoprint.plugin.BlueprintPlugin.requires_access(status_permission)
+    def get_printer_profile(self):
+        profile = self._printer_profile_manager.get_default()
+        #profile = octoprint.printer.profiles()
+        return profile
 
-# If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
-# ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
-# can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
-
-
-
-# Set the Python version your plugin is compatible with below. Recommended is Python 3 only for all new plugins.
-# OctoPrint 1.4.0 - 1.7.x run under both Python 3 and the end-of-life Python 2.
-# OctoPrint 1.8.0 onwards only supports Python 3.
-__plugin_pythoncompat__ = ">=3,<4"  # Only Python 3
+__plugin_name__ = "Printerinfo Plugin"
+__plugin_pythoncompat__ = ">=3,<4" 
 
 def __plugin_load__():
     global __plugin_implementation__
@@ -60,6 +67,6 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
-        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
-        "octoprint.plugin.on_after_startup": __plugin_implementation__.on_after_startup
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
     }
+
