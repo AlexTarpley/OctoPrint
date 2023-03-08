@@ -19,12 +19,13 @@ class PrinterinfoPlugin(
             "name" : profile["name"]
             }
         }
-        p = requests.post (url_printer, json =  myObj)
+        p = requests.post(url_printer, json =  myObj)
         print(p)
         
     def on_event(self, event, payload):
         url_job = 'https://middleman.gavinhailey.dev/api/v1/jobs'
-
+        #set up for loop to go through printers 
+        
         if event == Events.FILE_ADDED:
             self._logger.info("New print job added!")
             job_id = payload.get("job", {}).get("id")
@@ -35,8 +36,8 @@ class PrinterinfoPlugin(
                     myObj = {
                         "job": job_data
                     }
-                    j = requests.post(url_job, json = myObj)
                     self._logger.info("Job data: %s", job_data)
+                    j = requests.post(url_job, json = myObj)
                     # Update your job object here
                 else:
                    self._logger.warning("Failed to get job data for job id: %s", job_id)
@@ -58,6 +59,7 @@ class PrinterinfoPlugin(
 
     # Define your plugin's asset files to automatically include in the
     # core UI here.
+    
     def get_assets(self):
         return {
             #"js": ["js/printerinfo.js"],
@@ -70,6 +72,7 @@ class PrinterinfoPlugin(
     @octoprint.plugin.BlueprintPlugin.requires_access(admin_permission)
     @octoprint.plugin.BlueprintPlugin.route("/api/job", methods=["GET"])
     #@octoprint.plugin.BlueprintPlugin.requires_access(status_permission)
+    
     def get_printer_profile(self):
         profile = self._printer_profile_manager.get_default()
         #profile = octoprint.printer.profiles()
